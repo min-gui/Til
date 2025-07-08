@@ -12,13 +12,12 @@ jobs:
       uses: actions/checkout@v4 # 저장소 코드를 체크아웃합니다.
 
     - name: Send Wiki update to Slack
-      # 여기에 선택한 GitHub Marketplace 액션의 사용법을 입력합니다.
-      # 예시: (가상의 액션 이름과 설정입니다. 실제 액션은 다를 수 있습니다.)
-      uses: some-organization/gollum-slack-notifier@v1 # 액션의 경로와 버전을 지정합니다.
+      #  이 부분을 adriennedominguez/gollum-page-watcher@v1 로 수정해야 합니다.
+      uses: adriennedominguez/gollum-page-watcher@v1
       with:
-        slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }} # Slack Webhook URL을 환경 변수로 전달합니다.
-        message_template: | # Slack으로 보낼 메시지 템플릿 (액션에 따라 다름)
-          *GitHub Wiki Update!*
-          Page: {{ page.title }} ({{ page.action }})
-          URL: {{ page.html_url }}
-          User: {{ sender.login }}
+        slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }} # Slack Webhook URL을 전달합니다.
+        # 참고: gollum-page-watcher 액션은 message_template 대신 다양한 커스텀 메시지 옵션을 제공합니다.
+        # 자세한 내용은 액션 문서 (https://github.com/adriennedominguez/gollum-page-watcher)를 참조하세요.
+        # 예시:
+        custom-message: |
+          {{ page.action_verb }} happened on {{ page.full_name }} by {{ page.actor.display_login }} at {{ page.page_url }}
