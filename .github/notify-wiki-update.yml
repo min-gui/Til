@@ -1,0 +1,17 @@
+name: Notify Wiki Update
+
+on:
+  push:
+    paths:
+      - 'wiki/**' # 또는 Wiki 디렉토리 경로에 맞게 수정
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Slack
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        with:
+          args: "Wiki updated by ${{ github.actor }}: ${{ github.event.head_commit.message }}"
