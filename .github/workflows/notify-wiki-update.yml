@@ -1,0 +1,24 @@
+name: Wiki Updates to Slack
+
+on:
+  gollum: # GitHub Wiki (Gollum) 이벤트가 발생할 때 이 워크플로우를 트리거합니다.
+    types: [created, edited, deleted] # Wiki 페이지가 생성, 편집, 삭제될 때 실행됩니다.
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4 # 저장소 코드를 체크아웃합니다.
+
+    - name: Send Wiki update to Slack
+      # 여기에 선택한 GitHub Marketplace 액션의 사용법을 입력합니다.
+      # 예시: (가상의 액션 이름과 설정입니다. 실제 액션은 다를 수 있습니다.)
+      uses: some-organization/gollum-slack-notifier@v1 # 액션의 경로와 버전을 지정합니다.
+      with:
+        slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }} # Slack Webhook URL을 환경 변수로 전달합니다.
+        message_template: | # Slack으로 보낼 메시지 템플릿 (액션에 따라 다름)
+          *GitHub Wiki Update!*
+          Page: {{ page.title }} ({{ page.action }})
+          URL: {{ page.html_url }}
+          User: {{ sender.login }}
