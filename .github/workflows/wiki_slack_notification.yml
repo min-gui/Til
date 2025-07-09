@@ -77,7 +77,7 @@ jobs:
           LINE_COUNT=0
           while IFS= read -r line && [ $LINE_COUNT -lt 5 ]; do
             [ -n "$line" ] && {
-              PREVIEW_LINES="$PREVIEW_LINES$line ...\n"
+              PREVIEW_LINES="$PREVIEW_LINES$line\n"
               LINE_COUNT=$((LINE_COUNT + 1))
             }
           done << EOF
@@ -101,7 +101,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "```\n'"$(echo "$PREVIEW_LINES" | sed 's/"/\\"/g')"'\n```"
+                  "text": "```\n'"$(echo "$PREVIEW_LINES..." | sed 's/"/\\"/g')"'\n```"
                 }
               },
               {
