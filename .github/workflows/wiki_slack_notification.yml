@@ -118,7 +118,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "--wiki--\n\n '"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
+                  "text": " -- wiki -- \n \n '"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
                 }
               },
               {
