@@ -1,4 +1,4 @@
-name: Wiki Update with Enhanced Preview
+name: wiki slack bot
 on:
   gollum:
 jobs:
@@ -91,7 +91,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "'"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
+                  "text": "--wiki--\n  '"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' •  '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
                 }
               },
               {
@@ -118,7 +118,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "'"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
+                  "text": "--wiki--\n\n '"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
                 }
               },
               {
