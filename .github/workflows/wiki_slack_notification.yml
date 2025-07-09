@@ -4,6 +4,58 @@ on:
   gollum:
 
 jobs:
+  # 1단계: Environment 없이 테스트
+  test-without-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test without environment
+        run: |
+          echo "=== Without Environment ==="
+          echo "Secret exists: ${{ secrets.SLACK_WEBHOOK_URL != '' }}"
+          echo "Secret value: ${{ secrets.SLACK_WEBHOOK_URL }}"
+
+  # 2단계: Environment 지정하여 테스트
+  test-with-env:
+    runs-on: ubuntu-latest
+    environment: production  # 여기를 정확한 environment 이름으로
+    steps:
+      - name: Test with environment
+        run: |
+          echo "=== With Environment: production ==="
+          echo "Current environment: ${{ github.job.environment }}"
+          echo "Secret exists: ${{ secrets.SLACK_WEBHOOK_URL != '' }}"
+          
+          # 환경 변수로도 확인
+          if [ -n "$WEBHOOK" ]; then
+            echo "✅ Secret is available via env"
+          else
+            echo "❌ Secret is NOT available"
+          fi
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # 3단계: 실제 작동 테스트
+  actual-test:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Simple notification test
+        run: |
+          # Secret이 있는지 먼저 확인
+          if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            echo "ERROR: Secret is empty"
+            echo "Please check:"
+            echo "1. Environment name in workflow matches exactly with GitHub settings"
+            echo "2. Secret name is SLACK_WEBHOOK_URL"
+            echo "3. Secret is saved in Environment secrets, not Repository secrets"
+            exit 1
+          fi
+          
+          # 간단한 테스트 메시지 전송
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            -d '{"text":"✅ Environment secret is working!"}'
+
   notify-slack:
     runs-on: ubuntu-latest
     steps:
