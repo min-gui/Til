@@ -1,0 +1,96 @@
+# .github/workflows/wiki-slack-notification.yml
+name: Wiki to Slack Notification
+
+on:
+  gollum:  # Wiki 페이지 create, edit, delete 시 트리거
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Process Wiki Changes
+        id: process
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const pages = context.payload.pages;
+            const sender = context.payload.sender;
+            
+            // 변경된 페이지 정보 수집
+            const changes = pages.map(page => ({
+              name: page.page_name,
+              title: page.title,
+              action: page.action,
+              url: page.html_url,
+              sha: page.sha
+            }));
+            
+            // Slack 메시지용 포맷팅
+            const changesList = changes.map(change => 
+              `• *${change.title}* - ${change.action} (<${change.url}|보기>)`
+            ).join('\n');
+            
+            core.setOutput('changes_summary', changesList);
+            core.setOutput('editor', sender.login);
+            core.setOutput('editor_avatar', sender.avatar_url);
+            core.setOutput('pages_count', pages.length);
+
+      - name: Send to Slack via Webhook
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "GitHub Wiki가 업데이트되었습니다",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "📚 Wiki 업데이트 알림",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "image",
+                      "image_url": "${{ steps.process.outputs.editor_avatar }}",
+                      "alt_text": "editor"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*${{ steps.process.outputs.editor }}*님이 *${{ steps.process.outputs.pages_count }}*개 페이지를 수정했습니다"
+                    }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*변경된 페이지:*\n${{ steps.process.outputs.changes_summary }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "Wiki 홈으로 이동"
+                      },
+                      "url": "https://github.com/${{ github.repository }}/wiki"
+                    }
+                  ]
+                }
+              ]
+            }
