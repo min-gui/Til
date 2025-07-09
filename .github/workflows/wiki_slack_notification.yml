@@ -25,14 +25,28 @@ jobs:
             *) ACTION_KR="$ACTION" EMOJI="📄" ;;
           esac
           
-          # Wiki 내용 미리보기 (개선된 버전)
+          # Wiki 내용 확인 및 트리거 검사
           PREVIEW=""
+          SEND_NOTIFICATION=false
+          
           if [ "$ACTION" != "deleted" ]; then
             git clone -q --depth 1 https://github.com/${{ github.repository }}.wiki.git w 2>/dev/null && {
               for ext in .md .markdown ""; do
                 [ -f "w/${PAGE_NAME}${ext}" ] && {
-                  # 첫 번째 줄부터 5줄까지 추출하되, 의미 있는 내용만 필터링
+                  # 첫 번째 줄에서 트리거 문자 확인
+                  FIRST_LINE=$(head -n 1 "w/${PAGE_NAME}${ext}" | sed 's/^[[:space:]]*//')
+                  
+                  # 트리거 문자 확인 (slackSend 또는 원하는 다른 키워드)
+                  if echo "$FIRST_LINE" | grep -q "slackSend\|SLACK_SEND\|@slack"; then
+                    SEND_NOTIFICATION=true
+                    echo "📢 트리거 감지: $FIRST_LINE"
+                  else
+                    echo "ℹ️ 트리거 없음. 알림 전송 안함: $FIRST_LINE"
+                  fi
+                  
+                  # 미리보기 내용 추출 (트리거 라인 제외)
                   PREVIEW=$(cat "w/${PAGE_NAME}${ext}" | \
+                    sed '1d' | \
                     sed '/^$/d' | \
                     sed '/^[[:space:]]*$/d' | \
                     sed 's/^[[:space:]]*//' | \
@@ -45,6 +59,15 @@ jobs:
               done
               rm -rf w
             }
+          else
+            # 삭제 액션의 경우 항상 알림 전송
+            SEND_NOTIFICATION=true
+          fi
+          
+          # 트리거가 없으면 종료
+          if [ "$SEND_NOTIFICATION" = false ]; then
+            echo "🔕 트리거 조건 불충족. 알림 전송하지 않음."
+            exit 0
           fi
           
           [ -z "$PREVIEW" ] && PREVIEW="미리보기 없음"
