@@ -4,128 +4,40 @@ on:
   gollum:
 
 jobs:
-  # 1단계: Environment 없이 테스트
-  test-without-env:
-    runs-on: ubuntu-latest
-    environment: production  # 반드시 environment 지정 필요
-    steps:
-      - name: Send to Slack
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          if [ -z "$SLACK_WEBHOOK_URL" ]; then
-            echo "Secret not found in production environment"
-            exit 1
-          fi
-          
-          curl -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-type: application/json' \
-            -d '{"text":"Wiki updated!"}'
-
-  # 2단계: Environment 지정하여 테스트
-  test-with-env:
-    runs-on: ubuntu-latest
-    environment: production  # 여기를 정확한 environment 이름으로
-    steps:
-      - name: Test with environment
-        run: |
-          echo "=== With Environment: production ==="
-          echo "Current environment: ${{ github.job.environment }}"
-          echo "Secret exists: ${{ secrets.SLACK_WEBHOOK_URL != '' }}"
-          
-          # 환경 변수로도 확인
-          if [ -n "$WEBHOOK" ]; then
-            echo "✅ Secret is available via env"
-          else
-            echo "❌ Secret is NOT available"
-          fi
-        env:
-          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  # 3단계: 실제 작동 테스트
-  actual-test:
+  notify:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Simple notification test
-        run: |
-          # Secret이 있는지 먼저 확인
-          if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            echo "ERROR: Secret is empty"
-            echo "Please check:"
-            echo "1. Environment name in workflow matches exactly with GitHub settings"
-            echo "2. Secret name is SLACK_WEBHOOK_URL"
-            echo "3. Secret is saved in Environment secrets, not Repository secrets"
-            exit 1
-          fi
-          
-          # 간단한 테스트 메시지 전송
-          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
-            -H 'Content-type: application/json' \
-            -d '{"text":"✅ Environment secret is working!"}'
-
-  notify-slack:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if Secret exists
-        run: |
-          if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            echo "❌ SLACK_WEBHOOK_URL is not set"
-            exit 1
-          else
-            echo "✅ SLACK_WEBHOOK_URL is configured"
-          fi
-    
-      - name: Process Wiki Changes
-        id: process
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const pages = context.payload.pages;
-            const sender = context.payload.sender;
-            
-            const changesList = pages.map(page => 
-              `• *${page.title}* - ${page.action} (<${page.html_url}|보기>)`
-            ).join('\\n');
-            
-            core.setOutput('changes_summary', changesList);
-            core.setOutput('editor', sender.login);
-            core.setOutput('pages_count', pages.length);
-
-      # 방법 1: 환경 변수로 Webhook 사용
-      - name: Send to Slack
-        uses: slackapi/slack-github-action@v1.24.0
+      - name: Send Wiki Update to Slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        with:
-          payload: |
-            {
-              "text": "Wiki 업데이트: ${{ steps.process.outputs.editor }}님이 ${{ steps.process.outputs.pages_count }}개 페이지를 수정했습니다",
+        run: |
+          # 기본 정보 추출
+          TITLE="${{ github.event.pages[0].title }}"
+          ACTION="${{ github.event.pages[0].action }}"
+          URL="${{ github.event.pages[0].html_url }}"
+          EDITOR="${{ github.event.sender.login }}"
+          
+          # 액션 한글 변환
+          case "$ACTION" in
+            "created") ACTION_KR="생성" EMOJI="✨" ;;
+            "edited") ACTION_KR="수정" EMOJI="📝" ;;
+            "deleted") ACTION_KR="삭제" EMOJI="🗑️" ;;
+            *) ACTION_KR="$ACTION" EMOJI="📄" ;;
+          esac
+          
+          # Slack 메시지 전송
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            -d '{
+              "text": "'"$EMOJI"' Wiki '"$ACTION_KR"': '"$TITLE"'",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*변경된 페이지:*\n${{ steps.process.outputs.changes_summary }}"
+                    "text": "'"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'\n<'"$URL"'|📖 보러가기>"
                   }
                 }
               ]
-            }
-
-      # 또는 방법 2: curl 직접 사용
-      - name: Send to Slack via curl
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data '{
-              "text": "Wiki가 업데이트되었습니다",
-              "blocks": [{
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "수정자: ${{ steps.process.outputs.editor }}"
-                }
-              }]
-            }' \
-            $SLACK_WEBHOOK
+            }'
