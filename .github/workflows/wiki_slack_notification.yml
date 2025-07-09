@@ -1,4 +1,4 @@
-name: Wiki to Slack Notification
+name: Wiki Update with Clean Preview
 
 on:
   gollum:
@@ -17,6 +17,7 @@ jobs:
           ACTION="${{ github.event.pages[0].action }}"
           URL="${{ github.event.pages[0].html_url }}"
           EDITOR="${{ github.event.sender.login }}"
+          PAGE_NAME="${{ github.event.pages[0].page_name }}"
           
           # 액션 한글 변환
           case "$ACTION" in
@@ -25,6 +26,25 @@ jobs:
             "deleted") ACTION_KR="삭제" EMOJI="🗑️" ;;
             *) ACTION_KR="$ACTION" EMOJI="📄" ;;
           esac
+          
+          # Wiki 내용 미리보기
+          PREVIEW=""
+          if [ "$ACTION" != "deleted" ]; then
+            git clone -q --depth 1 https://github.com/${{ github.repository }}.wiki.git w 2>/dev/null && {
+              for ext in .md .markdown ""; do
+                [ -f "w/${PAGE_NAME}${ext}" ] && {
+                  PREVIEW=$(cat "w/${PAGE_NAME}${ext}" | grep -v '^#' | grep -v '^$' | head -5 | sed 's/^[[:space:]]*//')
+                  break
+                }
+              done
+              rm -rf w
+            }
+          fi
+          
+          [ -z "$PREVIEW" ] && PREVIEW="미리보기 없음"
+          
+          # 줄바꿈을 스페이스로 변환 (한 줄로 표시)
+          PREVIEW_ONELINE=$(echo "$PREVIEW" | tr '\n' ' ' | cut -c1-200)
           
           # Slack 메시지 전송
           curl -X POST "$SLACK_WEBHOOK_URL" \
@@ -36,7 +56,21 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "'"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'\n<'"$URL"'|📖 보러가기>"
+                    "text": "'"$EMOJI"' *'"$TITLE"'* 페이지가 '"$ACTION_KR"'되었습니다\n👤 '"$EDITOR"' • 📅 '"$(TZ='Asia/Seoul' date '+%m/%d %H:%M')"'"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [{
+                    "type": "mrkdwn",
+                    "text": "_'"${PREVIEW_ONELINE}"'..._"
+                  }]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<'"$URL"'|📖 전체 내용 보러가기>"
                   }
                 }
               ]
